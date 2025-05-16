@@ -1,5 +1,5 @@
 import os
-import discord, asyncio , aiohttp
+import discord, asyncio, aiohttp
 from datetime import datetime, timedelta, UTC
 from dotenv import load_dotenv
 
@@ -21,7 +21,7 @@ async def fetch_events():
 
 
 async def daily_updates():
-    await client.wait_until_ready() 
+    await client.wait_until_ready()
     channel = client.get_channel(CHANNEL)
     while not client.is_closed():
         ctfs = await fetch_events()
@@ -40,7 +40,7 @@ async def daily_updates():
                 message.add_field(name='Organized by', value=org, inline=True)
                 message.add_field(name='Type', value=onsite, inline=True)
                 message.add_field(name='Starts on', value=start, inline=True)
-                message.add_field(name= 'Ends on', value=end, inline=True)
+                message.add_field(name='Ends on', value=end, inline=True)
                 if logo:
                     message.set_thumbnail(url=logo)
                 await channel.send(embed=message)
@@ -50,9 +50,12 @@ async def daily_updates():
 async def on_ready():
     print(f"we have logged in as {client.user}")
 
+async def main():
+    asyncio.create_task(daily_updates())
+    await client.start(TOKEN)
 
-client.loop.create_task(daily_updates())
-client.run(TOKEN)
+if __name__ == "__main__":
+    asyncio.run(main())
 
 
 
