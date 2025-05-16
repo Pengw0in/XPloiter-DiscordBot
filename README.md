@@ -1,4 +1,4 @@
-## 🕵️‍♂️ Xploiters CTF Bot
+## A normal discord bot
 
 A lightweight Discord bot for the **Xploiters** team that automatically posts upcoming **CTF (Capture The Flag)** events from [CTFtime.org](https://ctftime.org).
 
