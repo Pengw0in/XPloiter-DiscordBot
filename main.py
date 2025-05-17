@@ -35,6 +35,7 @@ def keep_alive():
 
 # --------Config-----------
 intents = discord.Intents.default()
+intents.message_content = True 
 bot = commands.Bot(
     command_prefix='/',
     heartbeat_timeout=150.0, # because we are hosting this on an ass web-service
