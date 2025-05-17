@@ -156,13 +156,17 @@ async def unsetactive(ctx):
     save_active_channel()
     await ctx.send("❌ CTF updates channel unset.")
 
-@bot.hybrid_command(name='weekly', description='ctf events in next 7 days.')
-async def ctf_weekly(ctx, days=7):
+@bot.hybrid_command(name='monthly', description='ctf events in next 30 days.')
+async def ctf_monthly(ctx, days=30):
     embed = await instant_updates(days)
     await ctx.send(embed=embed)
 
-@bot.hybrid_command(name='monthly', description='ctf events in next 30 days.')
-async def ctf_monthly(ctx, days=30):
+@bot.hybrid_command(name='ctf', description='Get CTF events in the next N days.')
+async def ctf_days(ctx, days: int = 7):
+    """Send CTF events for the next N days (user input)."""
+    if days < 1 or days > 60:
+        await ctx.send("Please enter a number of days between 1 and 60.")
+        return
     embed = await instant_updates(days)
     await ctx.send(embed=embed)
 
