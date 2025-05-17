@@ -6,11 +6,16 @@ from datetime import datetime, timedelta, UTC
 from dotenv import load_dotenv
 from flask import Flask # dirty fix
 from threading import Thread # dirty fix
+import pytz
+import json
 
 # loads env variables
 load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
 ACTIVE_CH_ID = None
+
+# Persistent storage for ACTIVE_CH_ID
+ACTIVE_CH_FILE = "active_channel.json"
 
 
 # ---------dirty fix-------------
@@ -40,30 +45,50 @@ bot = commands.Bot(
 # ---------Setup----------
 @bot.event
 async def on_ready():
+    load_active_channel()
     await bot.tree.sync()
     custom_status = discord.CustomActivity(name="Watching over Upcoming CTF's!")
     await bot.change_presence(status=discord.Status.online, activity=custom_status)
     print(f"bot logged in.")
 
     # STARTING!!!
-    daily_updates.start()
-
+    weekly_updates.start()
 
 # -----------functions------------
+def load_active_channel():
+    global ACTIVE_CH_ID
+    try:
+        with open(ACTIVE_CH_FILE, "r") as f:
+            data = json.load(f)
+            ACTIVE_CH_ID = data.get("channel_id")
+    except Exception:
+        ACTIVE_CH_ID = None
+
+def save_active_channel():
+    with open(ACTIVE_CH_FILE, "w") as f:
+        json.dump({"channel_id": ACTIVE_CH_ID}, f)
+        
 async def fetch_events(days: int):
-    now = int(datetime.now(UTC).timestamp())
-    future = int((datetime.now(UTC) + timedelta(days=int(days))).timestamp())
+    now = int(datetime.now().replace(tzinfo=UTC).timestamp())
+    future = int((datetime.now().replace(tzinfo=UTC) + timedelta(days=int(days))).timestamp())
     url = f"https://ctftime.org/api/v1/events/?limit=100&start={now}&finish={future}"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as r:
-            return await r.json()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as r:
+                if r.status != 200:
+                    print(f"Failed to fetch events: {r.status}")
+                    return []
+                return await r.json()
+    except Exception as e:
+        print(f"Error fetching events: {e}")
+        return []
 
 async def instant_updates(days: int):
     ctfs = await fetch_events(days)
     if not ctfs:
-        return
+        return discord.Embed(title="No CTFs found.", color=discord.Color.red())
     
-    message = discord.Embed(title="CTF's in the Next 3 Days", color=discord.Color.purple())
+    message = discord.Embed(title=f"CTF's in the Next {days} Days", color=discord.Color.purple())
 
     for i, ctf in enumerate(ctfs, 1):
         name = ctf['title']
@@ -79,36 +104,39 @@ async def instant_updates(days: int):
     return message
 
 # Ok ok , this is not daily, but who cares.
-@tasks.loop(259200)
-async def daily_updates():
+@tasks.loop(minutes=1)
+async def weekly_updates():
     if not ACTIVE_CH_ID:
         return
 
-    channel = bot.get_channel(ACTIVE_CH_ID)
-    if not channel:
-        return
+    now_ist = datetime.now(pytz.timezone("Asia/Kolkata"))
+    
+    if now_ist.weekday() == 6 and now_ist.hour == 23 and now_ist.minute == 0:
+        channel = bot.get_channel(ACTIVE_CH_ID)
+        if not channel:
+            return
 
-    ctfs = await fetch_events(days=3)
-    if ctfs:
-        for ctf in ctfs:
-            name = ctf['title']
-            org = ctf['organizers'][0]['name']
-            url_ctf = ctf['ctftime_url']
-            start = ctf['start'].split('T')[0]
-            end = ctf['finish'].split('T')[0]
-            logo = ctf.get('logo') or None
-            onsite = "On-site" if ctf.get('onsite') else 'Online'
-            description = ctf['description']
+        ctfs = await fetch_events(days=7)
+        if ctfs:
+            for ctf in ctfs:
+                name = ctf['title']
+                org = ctf['organizers'][0]['name']
+                url_ctf = ctf['ctftime_url']
+                start = ctf['start'].split('T')[0]
+                end = ctf['finish'].split('T')[0]
+                logo = ctf.get('logo') or None
+                onsite = "On-site" if ctf.get('onsite') else 'Online'
+                description = ctf['description']
 
-            message = discord.Embed(title=name, url=url_ctf, description=description)
-            message.add_field(name='Organized by', value=org, inline=True)
-            message.add_field(name='Type', value=onsite, inline=True)
-            message.add_field(name='Starts on', value=start, inline=True)
-            message.add_field(name='Ends on', value=end, inline=True)
-            if logo:
-                message.set_thumbnail(url=logo)
+                embed = discord.Embed(title=name, url=url_ctf, description=description)
+                embed.add_field(name='Organized by', value=org, inline=True)
+                embed.add_field(name='Type', value=onsite, inline=True)
+                embed.add_field(name='Starts on', value=start, inline=True)
+                embed.add_field(name='Ends on', value=end, inline=True)
+                if logo:
+                    embed.set_thumbnail(url=logo)
 
-            await channel.send(embed=message)
+                await channel.send(embed=embed)
 
 
 # -----------Commands----------
@@ -117,7 +145,16 @@ async def daily_updates():
 async def active(ctx):
     global ACTIVE_CH_ID
     ACTIVE_CH_ID = ctx.channel.id
+    save_active_channel()
     await ctx.send(f"✅ This channel is now set for updates.")
+
+@bot.hybrid_command(name='unsetactive', description='Unset the active channel for CTF updates.')
+@commands.has_permissions(administrator=True)
+async def unsetactive(ctx):
+    global ACTIVE_CH_ID
+    ACTIVE_CH_ID = None
+    save_active_channel()
+    await ctx.send("❌ CTF updates channel unset.")
 
 @bot.hybrid_command(name='weekly', description='ctf events in next 7 days.')
 async def ctf_weekly(ctx, days=7):
