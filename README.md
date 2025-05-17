@@ -1,6 +1,6 @@
-## A normal discord bot
+## A Discord bot.
 
-A lightweight Discord bot for the **Xploiters** team that automatically posts upcoming **CTF (Capture The Flag)** events from [CTFtime.org](https://ctftime.org).
+A lightweight Discord bot for the **Xploiters** team that automatically fetches upcoming **CTF (Capture The Flag)** events from [CTFtime.org](https://ctftime.org).
 
 ### What It Does
 
@@ -16,3 +16,10 @@ A lightweight Discord bot for the **Xploiters** team that automatically posts up
 - Uses the official CTFtime API
 - Built with discord.py and aiohttp
 - Handles API errors and skips if no events found
+
+### Setup
+- figure out yourself.
+
+
+This bot is currently maintained by [Pengw0in/Zendex](https://github.com/Pengw0in).
+Feel free to submit pull requests. Im lazy so i might ignore them sometimes.
