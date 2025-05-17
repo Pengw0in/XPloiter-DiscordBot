@@ -2,13 +2,29 @@ import os
 import discord, asyncio, aiohttp
 from datetime import datetime, timedelta, UTC
 from dotenv import load_dotenv
+from flask import Flask
+from threading import Thread
 
+# loads env variables
 load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
 CHANNEL = int(os.getenv('ID'))
 
+
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
+
+app = Flask("")
+@app.route("/")
+def home():
+    return "Bot is running!"
+
+def run_web():
+    app.run(host="0.0.0.0", port=8080)
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.start()
 
 
 async def fetch_events():
@@ -49,6 +65,9 @@ async def daily_updates():
 @client.event
 async def on_ready():
     print(f"we have logged in as {client.user}")
+
+
+keep_alive()
 
 async def main():
     asyncio.create_task(daily_updates())
